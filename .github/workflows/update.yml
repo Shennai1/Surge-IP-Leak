@@ -2,11 +2,22 @@ name: Update IP leak rules
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/**"
+      - "supplements/**"
+      - "tests/**"
+      - ".github/workflows/update.yml"
   schedule:
     - cron: "23 3 * * *"
 
 permissions:
   contents: write
+
+concurrency:
+  group: update-ip-leak-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   update:
@@ -20,6 +31,9 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+
+      - name: Test rule builder
+        run: python -m unittest discover -s tests -v
 
       - name: Build rules
         run: python scripts/build.py

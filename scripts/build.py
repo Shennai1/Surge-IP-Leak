@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import ipaddress
+import json
 import re
 import sys
 import time
@@ -26,8 +28,13 @@ EXTERNAL_SOURCES = (
     "2708745eda41024b366100f6896d0067/raw/ip-test",
 )
 OUTPUT = Path("rules/IPLeak.list")
+SUPPLEMENT = Path(__file__).resolve().parents[1] / "supplements/IPLeak.list"
+IPV6_PROBES_URL = (
+    "https://raw.githubusercontent.com/falling-sky/source/master/sites/sites.json"
+)
 USER_AGENT = "Surge-IP-Leak/1.0 (+https://github.com/Shennai1/Surge-IP-Leak)"
 LIST_NAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
+HOST_LABEL_RE = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?")
 
 
 @dataclass(frozen=True)
@@ -195,6 +202,70 @@ def suffix_covers(domain: str, suffixes: set[str]) -> bool:
     return any(".".join(labels[index:]) in suffixes for index in range(len(labels)))
 
 
+def validated_hostname(value: str) -> str:
+    """Accept a DNS hostname, never an IP literal, URL, wildcard or policy."""
+    domain = normalize_domain(value)
+    if (
+        not domain
+        or value.strip().rstrip(".").lower() != domain
+        or any(not HOST_LABEL_RE.fullmatch(label) for label in domain.split("."))
+    ):
+        raise ValueError(f"invalid hostname: {value!r}")
+    try:
+        ipaddress.ip_address(domain)
+    except ValueError:
+        return domain
+    raise ValueError(f"IP literals are not domain rules: {value!r}")
+
+
+def parse_supplement(text: str) -> list[Rule]:
+    """Fail on malformed curated rules instead of silently losing coverage."""
+    rules: list[Rule] = []
+    for number, raw_line in enumerate(text.splitlines(), 1):
+        line = raw_line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        fields = [field.strip() for field in line.split(",")]
+        if len(fields) != 2 or fields[0] not in {"DOMAIN", "DOMAIN-SUFFIX"}:
+            raise ValueError(f"invalid supplement rule on line {number}: {line!r}")
+        rules.append(Rule(fields[0], validated_hostname(fields[1])))
+    if not rules:
+        raise ValueError("refusing an empty supplement")
+    return rules
+
+
+def parse_ipv6_probes(text: str) -> list[Rule]:
+    """Extract only v4/v6 probe hosts, not providers' unrelated parent domains."""
+    payload = json.loads(text)
+    sites = payload.get("sites") if isinstance(payload, dict) else None
+    if not isinstance(sites, dict) or not sites:
+        raise ValueError("invalid or empty test-ipv6 sites manifest")
+    rules: list[Rule] = []
+    for name, site in sites.items():
+        if not isinstance(site, dict) or not isinstance(site.get("hide", False), bool):
+            raise ValueError(f"invalid test-ipv6 site: {name!r}")
+        if site.get("hide", False):
+            continue
+        for family in ("v4", "v6"):
+            value = site.get(family)
+            if not isinstance(value, str) or any(char.isspace() for char in value):
+                raise ValueError(f"missing or invalid {family} probe for {name!r}")
+            endpoint = urlsplit(value)
+            if (
+                endpoint.scheme not in {"http", "https"}
+                or not endpoint.hostname
+                or endpoint.username is not None
+                or endpoint.password is not None
+            ):
+                raise ValueError(f"invalid probe URL: {value!r}")
+            # Accessing port also validates its syntax and range.
+            endpoint.port
+            rules.append(Rule("DOMAIN", validated_hostname(endpoint.hostname)))
+    if not rules:
+        raise ValueError("refusing a manifest without visible test-ipv6 probes")
+    return rules
+
+
 def semantic_deduplicate(rules: list[Rule]) -> tuple[list[str], list[str]]:
     """Remove exact duplicates and rules covered by a parent suffix."""
     suffix_candidates = {rule.domain for rule in rules if rule.kind == "DOMAIN-SUFFIX"}
@@ -222,6 +293,8 @@ def render(domains: list[str], suffixes: list[str]) -> str:
         "# - v2fly/domain-list-community: test-ipv6",
         "# - iab0x00/ProxyRules: Rule/IPCheck.txt",
         "# - zzerding Gist 2708745eda41024b366100f6896d0067: latest ip-test",
+        "# - falling-sky/source: sites/sites.json (visible v4/v6 probe hosts only)",
+        "# - supplements/IPLeak.list: reviewed additions with source references",
         "",
     ]
     body = [*(f"DOMAIN,{domain}" for domain in domains)]
@@ -238,6 +311,8 @@ def build() -> str:
         rules.extend(resolver.resolve(name))
     for url in EXTERNAL_SOURCES:
         rules.extend(parse_external(fetch(url)))
+    rules.extend(parse_ipv6_probes(fetch(IPV6_PROBES_URL)))
+    rules.extend(parse_supplement(SUPPLEMENT.read_text(encoding="utf-8")))
 
     domains, suffixes = semantic_deduplicate(rules)
     if len(domains) + len(suffixes) < 100:

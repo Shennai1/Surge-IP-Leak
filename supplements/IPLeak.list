@@ -1,0 +1,64 @@
+# Reviewed additions, 2026-09-14. Edit this file, not rules/IPLeak.list.
+# This file is merged on every build; it is not a blindly synchronized upstream.
+# Review notes and exclusions: ../docs/review-2026-09-14.md
+
+# IP/ASN/egress checks: https://github.com/ExNG51/envi.ruleset/blob/main/ipinfo.list
+DOMAIN-SUFFIX,ipinfo.cv
+DOMAIN-SUFFIX,ip.net.coffee
+DOMAIN-SUFFIX,ip.ipyard.com
+DOMAIN-SUFFIX,ip.sy
+DOMAIN-SUFFIX,abuseipdb.com
+
+# Privacy and leak tests: https://github.com/casiuna/clash-party/blob/main/rules/Loon/IP_Check.list
+DOMAIN-SUFFIX,dnsleaktest.org
+DOMAIN-SUFFIX,bash.ws
+DOMAIN-SUFFIX,ipx.ac
+DOMAIN-SUFFIX,iphey.com
+DOMAIN-SUFFIX,ipv6-test.com
+DOMAIN-SUFFIX,ip111.cn
+DOMAIN,ip.skk.moe
+
+# Additional dedicated detectors: https://github.com/uhovohu/clash/blob/main/Rules/iptest.yaml
+DOMAIN-SUFFIX,ip.icu
+DOMAIN-SUFFIX,ip.im
+DOMAIN-SUFFIX,ipchaxun.com
+DOMAIN-SUFFIX,ipchaxun.net
+DOMAIN-SUFFIX,ip138.com
+DOMAIN-SUFFIX,ip.network
+DOMAIN-SUFFIX,ipcost.com
+DOMAIN-SUFFIX,ip125.com
+DOMAIN-SUFFIX,pixelscan.net
+DOMAIN-SUFFIX,ip.guide
+DOMAIN-SUFFIX,ipsuper.com
+# ipcost.com currently redirects to this IP/ASN/VPN checker.
+DOMAIN-SUFFIX,ipme.co
+
+# IP lookup endpoints: https://github.com/onepiece-studio/merry/blob/main/Surge/IPCheck.list
+DOMAIN-SUFFIX,ip.fm
+DOMAIN,api.skk.moe
+DOMAIN,ipv4.im
+# The ip.im homepage documents these separate IPv4/IPv6 API hosts.
+DOMAIN,ip4.now
+DOMAIN,ip6.now
+
+# Proxy/VPN checks: https://github.com/cmliu/ACL4SSR/blob/main/Clash/CoaxTheKid.list
+DOMAIN-SUFFIX,whoer.com
+DOMAIN-SUFFIX,vpnapi.io
+DOMAIN-SUFFIX,ip2proxy.com
+# DNS RTT probes use random subdomains of these three suffixes.
+# Primary source: https://github.com/brianshea2/addr.tools/blob/main/website/dnscheck.tools/main.js
+DOMAIN-SUFFIX,null-addr.com
+DOMAIN-SUFFIX,null-addr.net
+DOMAIN-SUFFIX,null-addr.org
+
+# Narrow third-party IP endpoints; do not proxy the entire service provider.
+# https://github.com/nb5p/MyIP/blob/master/README.md
+DOMAIN,whois.pconline.com.cn
+DOMAIN,ip-moe.zerodream.net
+
+# Dynamic IP-check endpoint, also observed in the user's test request log.
+# https://github.com/chunkburst/clash-rule/blob/main/src/test_platform.yaml
+DOMAIN-SUFFIX,aapq.net
+# User-observed measurement/RUM endpoint; not the entire cdnetworks.net CDN.
+# Its presence in a request log alone does not prove that it caused an IP leak.
+DOMAIN,cdnperf-rum.cdnetworks.net
