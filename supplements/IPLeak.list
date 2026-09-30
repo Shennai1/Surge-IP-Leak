@@ -62,3 +62,44 @@ DOMAIN-SUFFIX,aapq.net
 # User-observed measurement/RUM endpoint; not the entire cdnetworks.net CDN.
 # Its presence in a request log alone does not prove that it caused an IP leak.
 DOMAIN,cdnperf-rum.cdnetworks.net
+
+# Reviewed additions, 2026-09-30.
+# Dedicated detection sites and narrowly scoped probe hosts only.
+# Shared CAPTCHA/CDN resources and ordinary application endpoints are excluded.
+
+# Browser/IP checks: https://geospoof.com/verify and https://ip.mihana.me/
+# Use exact hosts: do not route software services or the entire mihana.me domain.
+DOMAIN,geospoof.com
+DOMAIN,www.geospoof.com
+DOMAIN,ip.mihana.me
+
+# Public IP lookup pages; do not route the entire chinaz.com domain.
+# https://ip.cn/ https://ip.chinaz.com/ https://mip.chinaz.com/
+DOMAIN,ip.cn
+DOMAIN,ip.chinaz.com
+DOMAIN,mip.chinaz.com
+
+# Live probe namespaces referenced by https://www.astrill.com/vpn-leak-test
+# DNS probes use random session subdomains; IPv6 uses this exact host.
+DOMAIN-SUFFIX,dnsleak.astrdns.com
+DOMAIN,ipv6-leak.astrill.com
+
+# Random-subdomain DNS probes read dns_resolver_info from /debug_resolver.
+# https://ip.mihana.me/assets/dns-exit-BV3eMrGE.js (reviewed 2026-09-30)
+# Do not expand this to fastly-analytics.com or fastly.net.
+DOMAIN-SUFFIX,u.fastly-analytics.com
+
+# Dedicated IP / ASN / proxy-quality query services.
+# https://iphub.info/ https://ip.cx/ https://hostip.info/use.php
+# https://www.ipinfodb.com/ https://ip2geo.dev/what-is-my-ip
+DOMAIN-SUFFIX,iphub.info
+DOMAIN-SUFFIX,ip.cx
+DOMAIN-SUFFIX,hostip.info
+DOMAIN-SUFFIX,ipinfodb.com
+DOMAIN-SUFFIX,ip2geo.dev
+
+# https://ip99.com/ exposes its IP query API on the same host.
+DOMAIN,ip99.com
+# https://hackmyip.com/ offers IP/ASN queries and WebRTC-related tools.
+# Its DNS page currently tests DoH reachability, not actual DNS leakage.
+DOMAIN,hackmyip.com
